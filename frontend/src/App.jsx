@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getProducts, createProduct, updateProduct, deleteProduct } from './Api/api'
 
 export default function App() {
@@ -9,23 +9,18 @@ export default function App() {
   const [error, setError] = useState('')
 
   // Загрузка
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setProducts(await getProducts())
+      setError('')
     } catch (e) {
       setError('Не удалось загрузить товары')
     }
-  }
+  }, [])
 
   useEffect(() => {
-    (async () => {
-      try {
-        setProducts(await getProducts())
-      } catch (e) {
-        setError('Не удалось загрузить товары')
-      }
-    })()
-  }, [])
+    void load()
+  }, [load])
 
   // Создание / обновление
   const handleSubmit = async (e) => {
@@ -43,8 +38,10 @@ export default function App() {
       } else {
         await createProduct({ name, price: Number(price) })
       }
-      setName(''); setPrice(''); setEditingId(null)
-      load()
+      setName('')
+      setPrice('')
+      setEditingId(null)
+      await load()
     } catch (e) {
       setError(e.response?.data?.error || 'Ошибка сервера')
     }
@@ -54,13 +51,24 @@ export default function App() {
   const startEdit = (p) => {
     setEditingId(p.id)
     setName(p.name)
-    setPrice(p.price)
+    setPrice(String(p.price))
   }
 
   // Удаление
   const handleDelete = async (id) => {
-    await deleteProduct(id)
-    load()
+    try {
+      await deleteProduct(id)
+      await load()
+    } catch (e) {
+      setError(e.response?.data?.error || 'Не удалось удалить товар')
+    }
+  }
+
+  // Сброс формы
+  const resetForm = () => {
+    setEditingId(null)
+    setName('')
+    setPrice('')
   }
 
   return (
@@ -83,9 +91,7 @@ export default function App() {
         />
         <button type="submit">{editingId ? 'Сохранить' : 'Добавить'}</button>
         {editingId && (
-          <button type="button" onClick={() => {
-            setEditingId(null); setName(''); setPrice('')
-          }}>
+          <button type="button" onClick={resetForm}>
             Отмена
           </button>
         )}
@@ -100,7 +106,9 @@ export default function App() {
           }}>
             <span>
               <b>{p.name}</b> — {p.price} ₽
-              {p.stock != null && <span style={{ color: '#888' }}> (остаток: {p.stock})</span>}
+              {p.stock != null && (
+                <span style={{ color: '#888' }}> (остаток: {p.stock})</span>
+              )}
             </span>
             <span style={{ display: 'flex', gap: 6 }}>
               <button onClick={() => startEdit(p)}>✏️</button>
