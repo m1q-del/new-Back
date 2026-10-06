@@ -3,7 +3,6 @@ import express from 'express'
 import cors from 'cors'
 
 import { sequelize } from './db/sequelize.js'
-import { User } from './models/User.js'
 import { Product } from './models/Product.js'
 
 import { logger } from './middlewares/logger.js'
@@ -11,12 +10,10 @@ import { auth } from './middlewares/reqAuth.js'
 
 const app = express()
 
-// --- Глобальные middleware ---
 app.use(cors())
 app.use(logger)
 app.use(express.json())
 
-// --- GET all ---
 app.get('/products', async (req, res, next) => {
   try {
     const products = await Product.findAll()
@@ -26,7 +23,6 @@ app.get('/products', async (req, res, next) => {
   }
 })
 
-// --- POST create ---
 app.post('/products', async (req, res, next) => {
   try {
     const { name, price, stock } = req.body
@@ -43,7 +39,6 @@ app.post('/products', async (req, res, next) => {
   }
 })
 
-// --- PUT update ---
 app.put('/products/:id', async (req, res, next) => {
   try {
     const product = await Product.findByPk(req.params.id)
@@ -63,7 +58,6 @@ app.put('/products/:id', async (req, res, next) => {
   }
 })
 
-// --- DELETE ---
 app.delete('/products/:id', async (req, res, next) => {
   try {
     const product = await Product.findByPk(req.params.id)
@@ -78,28 +72,23 @@ app.delete('/products/:id', async (req, res, next) => {
   }
 })
 
-// --- Echo для теста ---
 app.post('/echo', (req, res) => {
   res.json(req.body)
 })
 
-// --- Защищённый роут ---
 app.get('/admin', auth, (req, res) => {
   res.json({ message: 'Добро пожаловать в админку' })
 })
 
-// --- 404 ---
 app.use((req, res) => {
   res.status(404).json({ error: 'Роут не найден' })
 })
 
-// --- Global error handler ---
 app.use((err, req, res, next) => {
   console.error(err)
   res.status(500).json({ error: 'Ошибка сервера' })
 })
 
-// --- Запуск ---
 const PORT = process.env.PORT || 3000
 
 async function start() {

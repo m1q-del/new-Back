@@ -1,60 +1,86 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getProducts, createProduct, updateProduct, deleteProduct } from './Api/api'
+import { Link } from 'react-router-dom'
 
 export default function App() {
   const [products, setProducts] = useState([])
   const [name, setName] = useState('')
+  const [stock, setStock] = useState('')
   const [price, setPrice] = useState('')
   const [editingId, setEditingId] = useState(null)
   const [error, setError] = useState('')
 
-  // Загрузка
+  const linkStyle = {
+    textDecoration: 'none',
+    color: '#333',
+    padding: '6px 12px',
+    borderRadius: 6,
+    background: '#f2f2f2',
+    display: 'inline-block',
+  }
+
+  const inputStyle = {
+    padding: '6px 10px',
+    borderRadius: 6,
+    border: '1px solid #ccc',
+    outline: 'none',
+    fontSize: 14,
+    background: '#fff',
+  }
+
+  const buttonStyle = {
+    padding: '6px 12px',
+    borderRadius: 6,
+    border: '1px solid #ccc',
+    background: '#f2f2f2',
+    color: '#333',
+    cursor: 'pointer',
+    fontSize: 14,
+  }
+
   const load = useCallback(async () => {
     try {
       setProducts(await getProducts())
       setError('')
-    } catch (e) {
+    } catch {
       setError('Не удалось загрузить товары')
     }
   }, [])
 
-  useEffect(() => {
-    void load()
-  }, [load])
+  useEffect(() => { void load() }, [load])
 
-  // Создание / обновление
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
-    if (!name.trim() || price === '') {
-      setError('Заполните название и цену')
-      return
+    const trimmedName = String(name ?? '').trim()
+    if (!trimmedName) { setError('Введите название'); return }
+    if (/\d/.test(trimmedName)) { setError('Товар не должен содержать цифры'); return }
+    if (price === '') { setError('Введите цену'); return }
+
+    const payload = {
+      name: trimmedName,
+      price: Number(price),
+      stock: stock === '' ? 0 : Number(stock),
     }
 
     try {
-      if (editingId) {
-        await updateProduct(editingId, { name, price: Number(price) })
-      } else {
-        await createProduct({ name, price: Number(price) })
-      }
-      setName('')
-      setPrice('')
-      setEditingId(null)
+      if (editingId) await updateProduct(editingId, payload)
+      else await createProduct(payload)
+      setName(''); setPrice(''); setStock(''); setEditingId(null)
       await load()
     } catch (e) {
       setError(e.response?.data?.error || 'Ошибка сервера')
     }
   }
 
-  // Редактирование
   const startEdit = (p) => {
     setEditingId(p.id)
     setName(p.name)
     setPrice(String(p.price))
+    setStock(p.stock == null ? '' : String(p.stock))
   }
 
-  // Удаление
   const handleDelete = async (id) => {
     try {
       await deleteProduct(id)
@@ -64,11 +90,8 @@ export default function App() {
     }
   }
 
-  // Сброс формы
   const resetForm = () => {
-    setEditingId(null)
-    setName('')
-    setPrice('')
+    setEditingId(null); setName(''); setPrice(''); setStock('')
   }
 
   return (
@@ -78,24 +101,17 @@ export default function App() {
       {error && <p style={{ color: 'red' }}>{error}</p>}
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        <input
-          placeholder="Название"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          placeholder="Цена"
-          type="number"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-        />
-        <button type="submit">{editingId ? 'Сохранить' : 'Добавить'}</button>
+        <input style={inputStyle} placeholder="Название" value={name} onChange={(e) => setName(e.target.value)} />
+        <input style={inputStyle} placeholder="Цена" type="number" value={price} onChange={(e) => setPrice(e.target.value)} />
+        <input style={inputStyle} placeholder="Остаток" type="number" value={stock} onChange={(e) => setStock(e.target.value)} />
+
+        <button type="submit" style={buttonStyle}>{editingId ? 'Сохранить' : 'Добавить'}</button>
         {editingId && (
-          <button type="button" onClick={resetForm}>
-            Отмена
-          </button>
+          <button type="button" style={buttonStyle} onClick={resetForm}>Отмена</button>
         )}
       </form>
+
+      <Link style={linkStyle} to="/order">Перейти к заказу</Link>
 
       <ul style={{ listStyle: 'none', padding: 0 }}>
         {products.map(p => (
@@ -106,13 +122,11 @@ export default function App() {
           }}>
             <span>
               <b>{p.name}</b> — {p.price} ₽
-              {p.stock != null && (
-                <span style={{ color: '#888' }}> (остаток: {p.stock})</span>
-              )}
+              {p.stock != null && <span style={{ color: '#888' }}> (остаток: {p.stock})</span>}
             </span>
             <span style={{ display: 'flex', gap: 6 }}>
-              <button onClick={() => startEdit(p)}>✏️</button>
-              <button onClick={() => handleDelete(p.id)}>🗑️</button>
+              <button style={buttonStyle} onClick={() => startEdit(p)}>Редактировать</button>
+              <button style={buttonStyle} onClick={() => handleDelete(p.id)}>Удалить</button>
             </span>
           </li>
         ))}

@@ -12,6 +12,10 @@ const Product = sequelize.define("Product", {
     allowNull: false,
     validate: {
       notEmpty: { msg: "Название обязательно" },
+      is: {
+        args: /^[A-Za-zА-Яа-яЁё\s\-]+$/,
+        msg: 'Товар может содержать только буквы, пробелы и дефис',
+      }
     },
   },
   price: {
